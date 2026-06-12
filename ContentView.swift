@@ -573,6 +573,7 @@ struct AvatarCreatorScreen: View {
 struct RocketCreatorScreen: View {
     @Binding var screen: String
     @Binding var avatar: AvatarProfile
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
 
     let bodyOptions: [Color] = [.white, .gray, .blue, .black, .purple]
     let noseOptions: [Color] = [.red, .blue, .orange, .green, .purple, .cyan, .yellow]
