@@ -105,7 +105,7 @@ struct ContentView: View {
             case "crystalCollector":
                 CrystalCollectorGameScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "treasureHunt":
-                DeepSeaTreasureHuntScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
+                FlappyMantaGameScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "reefBuilder":
                 ReefBuilderScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "missionTimerOnly":
@@ -1163,7 +1163,7 @@ struct PlanetArrivalScreen: View {
             .offset(x: rocketX, y: rocketY)
             .rotationEffect(.degrees(rocketRotation))
             .shadow(color: .cyan.opacity(glow ? 0.9 : 0.25), radius: glow ? 30 : 8)
-            .animation(.easeInOut(duration: 1.6), value: landingAngle)
+            .animation(.easeInOut(duration: planetIndex == 1 ? 3.2 : 1.6), value: landingAngle)
 
             VStack(spacing: 10) {
                 Text(planetName(planetIndex))
@@ -1178,7 +1178,7 @@ struct PlanetArrivalScreen: View {
                 Spacer()
 
                 VStack(spacing: 10) {
-                    Text(landingComplete ? "Congrats! You completed your first landing alignment." : "Landing Alignment")
+                    Text(landingComplete ? (planetIndex == 1 ? "Congrats! You completed your second landing alignment." : "Congrats! You completed your first landing alignment.") : "Landing Alignment")
                         .font(.headline)
                         .foregroundColor(landingComplete ? .yellow : .white)
                         .multilineTextAlignment(.center)
@@ -1636,7 +1636,7 @@ struct MissionChoiceScreen: View {
 
                     if currentPlanetIndex == 1 {
                         Button { screen = "treasureHunt" } label: {
-                            Text("Deep Sea Treasure Hunt").mainButton(color: .blue)
+                            Text("Flappy Manta").mainButton(color: .blue)
                         }
                         Button { screen = "reefBuilder" } label: {
                             Text("Reef Builder").mainButton(color: .purple)
@@ -2289,38 +2289,82 @@ struct CrystalCollectorGameScreen: View {
         "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
     }
 }
-struct DeepSeaTreasureHuntScreen: View {
+struct FlappyPillar: Identifiable {
+    let id: Int
+    var x: CGFloat
+    var gapY: CGFloat
+    var passed: Bool = false
+}
+
+struct FlappyMantaGameScreen: View {
     @Binding var screen: String
     @Binding var currentSession: Int
     @Binding var currentPlanetIndex: Int
     @Binding var missionTimeRemaining: Int
     @Binding var timerRunning: Bool
 
-    @State private var treasureMove = false
-    @State private var collected: Set<Int> = []
     @State private var showHowToPlay = true
+    @State private var birdY: CGFloat = 380
+    @State private var velocity: CGFloat = 0
+    @State private var pillars: [FlappyPillar] = []
+    @State private var score = 0
+    @State private var nextPillarID = 0
+    @State private var isPlaying = false
+    @State private var flap = false
+
+    let birdX: CGFloat = 100
+    let gapHeight: CGFloat = 220
+    let pillarWidth: CGFloat = 60
+    let gravity: CGFloat = 1.1
+    let flapStrength: CGFloat = -16
+    let scrollSpeed: CGFloat = 2.4
 
     var body: some View {
         ZStack {
             OceanusPrimeScene()
 
-            ForEach(0..<16, id: \.self) { i in
-                if !collected.contains(i) {
-                    TreasureChest()
-                        .frame(width: 48, height: 34)
-                        .position(
-                            x: CGFloat(35 + (i % 4) * 90),
-                            y: treasureMove ? CGFloat(170 + (i / 4) * 120) : CGFloat(700 - (i / 4) * 90)
-                        )
-                        .animation(.easeInOut(duration: Double(2.4 + Double(i % 4) * 0.4)).repeatForever(autoreverses: true), value: treasureMove)
-                        .onTapGesture { collected.insert(i) }
+            ForEach(pillars) { pillar in
+                VStack(spacing: 0) {
+                    CoralPiece(color: .pink)
+                        .frame(width: pillarWidth, height: pillar.gapY - gapHeight / 2)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    Spacer()
+                        .frame(height: gapHeight)
+                    CoralPiece(color: .purple)
+                        .frame(width: pillarWidth, height: 800 - (pillar.gapY + gapHeight / 2))
+                        .frame(maxHeight: .infinity, alignment: .bottom)
                 }
+                .frame(height: 800)
+                .position(x: pillar.x, y: 400)
             }
 
-            GameTopBar(title: "Deep Sea Treasure Hunt", count: "Treasure: \(collected.count) / 16", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
+            MantaRayShape()
+                .fill(LinearGradient(colors: [.purple, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 64, height: 40)
+                .rotationEffect(.degrees(flap ? -18 : 12))
+                .shadow(color: .cyan.opacity(0.8), radius: 10)
+                .position(x: birdX, y: birdY)
+                .animation(.easeOut(duration: 0.2), value: flap)
+
+            GameTopBar(title: "Flappy Manta", count: "Score: \(score)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
 
             VStack {
                 Spacer()
+
+                if !isPlaying {
+                    Button { startGame() } label: {
+                        Text("Tap to Fly").mainButton(color: .blue)
+                    }
+                } else {
+                    Text("Tap anywhere to flap up")
+                        .font(.headline)
+                        .foregroundColor(.cyan)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(.black.opacity(0.45))
+                        .cornerRadius(15)
+                }
+
                 HStack(spacing: 8) {
                     Button { screen = "reefBuilder" } label: {
                         Text("Reef").mainButton(color: .purple)
@@ -2339,13 +2383,85 @@ struct DeepSeaTreasureHuntScreen: View {
             }
 
             if showHowToPlay {
-                HowToPlayPopup(title: "How to Play", message: "Tap treasure chests before they drift away. Your mission timer keeps running even if you switch activities.", buttonText: "Start Hunt", closeAction: { showHowToPlay = false })
+                HowToPlayPopup(title: "How to Play", message: "Guide the glowing manta ray through the gaps in the coral. Tap anywhere to flap upward and avoid the coral. Your mission timer keeps running even if you switch activities.", buttonText: "Start Flying", closeAction: { showHowToPlay = false })
             }
         }
         .ignoresSafeArea()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isPlaying {
+                velocity = flapStrength
+                flap = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { flap = false }
+            }
+        }
         .onAppear {
             timerRunning = true
-            treasureMove = true
+            resetGame()
+        }
+        .onReceive(Timer.publish(every: 0.03, on: .main, in: .common).autoconnect()) { _ in
+            if isPlaying {
+                tick()
+            }
+        }
+    }
+
+    func startGame() {
+        resetGame()
+        isPlaying = true
+    }
+
+    func resetGame() {
+        birdY = 380
+        velocity = 0
+        score = 0
+        nextPillarID = 0
+        pillars = [
+            FlappyPillar(id: nextPillar(), x: 420, gapY: 380),
+            FlappyPillar(id: nextPillar(), x: 660, gapY: 280),
+            FlappyPillar(id: nextPillar(), x: 900, gapY: 460)
+        ]
+    }
+
+    func nextPillar() -> Int {
+        let id = nextPillarID
+        nextPillarID += 1
+        return id
+    }
+
+    func tick() {
+        velocity += gravity
+        birdY += velocity
+
+        if birdY < 40 {
+            birdY = 40
+            velocity = 0
+        }
+
+        if birdY > 740 {
+            isPlaying = false
+            return
+        }
+
+        for index in pillars.indices {
+            pillars[index].x -= scrollSpeed
+
+            if !pillars[index].passed && pillars[index].x < birdX {
+                pillars[index].passed = true
+                score += 1
+            }
+
+            let withinX = abs(pillars[index].x - birdX) < (pillarWidth / 2 + 22)
+            let withinGap = abs(birdY - pillars[index].gapY) < (gapHeight / 2 - 10)
+            if withinX && !withinGap {
+                isPlaying = false
+            }
+        }
+
+        if let first = pillars.first, first.x < -pillarWidth {
+            pillars.removeFirst()
+            let lastX = pillars.last?.x ?? 420
+            pillars.append(FlappyPillar(id: nextPillar(), x: lastX + 240, gapY: CGFloat.random(in: 220...560)))
         }
     }
 
@@ -2356,6 +2472,35 @@ struct DeepSeaTreasureHuntScreen: View {
 
     func formatTime(_ seconds: Int) -> String {
         "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
+struct MantaRayShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY),
+            control1: CGPoint(x: rect.minX, y: rect.minY),
+            control2: CGPoint(x: rect.minX, y: rect.midY)
+        )
+        path.addCurve(
+            to: CGPoint(x: rect.midX, y: rect.midY * 1.15),
+            control1: CGPoint(x: rect.midX * 0.6, y: rect.maxY),
+            control2: CGPoint(x: rect.midX * 0.85, y: rect.midY)
+        )
+        path.addCurve(
+            to: CGPoint(x: rect.maxX, y: rect.maxY),
+            control1: CGPoint(x: rect.midX * 1.15, y: rect.midY),
+            control2: CGPoint(x: rect.maxX * 0.9, y: rect.maxY)
+        )
+        path.addCurve(
+            to: CGPoint(x: rect.midX, y: rect.minY),
+            control1: CGPoint(x: rect.maxX, y: rect.midY),
+            control2: CGPoint(x: rect.maxX, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -2392,7 +2537,7 @@ struct ReefBuilderScreen: View {
                 Spacer()
                 HStack(spacing: 8) {
                     Button { screen = "treasureHunt" } label: {
-                        Text("Treasure").mainButton(color: .blue)
+                        Text("Flappy").mainButton(color: .blue)
                     }
                     Button { screen = "missionTimerOnly" } label: {
                         Text("Timer").mainButton(color: .green)
@@ -2477,7 +2622,7 @@ struct MissionTimerOnlyScreen: View {
                 HStack(spacing: 8) {
                     if currentPlanetIndex == 1 {
                         Button { screen = "treasureHunt" } label: {
-                            Text("Treasure").mainButton(color: .blue)
+                            Text("Flappy").mainButton(color: .blue)
                         }
                         Button { screen = "reefBuilder" } label: {
                             Text("Reef").mainButton(color: .purple)
@@ -3294,55 +3439,110 @@ struct CrystalLagoonScene: View {
 struct OceanusPrimeScene: View {
     @State private var bubbles = false
     @State private var fish = false
+    @State private var glow = false
+    @State private var mantas = false
 
     var body: some View {
         ZStack {
+            // Darker, deeper blue/purple gradient than Crystal Lagoon
             LinearGradient(
                 colors: [
-                    Color(red: 0.01, green: 0.06, blue: 0.20),
-                    Color(red: 0.02, green: 0.22, blue: 0.48),
-                    Color(red: 0.03, green: 0.50, blue: 0.68),
-                    Color(red: 0.01, green: 0.13, blue: 0.24)
+                    Color(red: 0.00, green: 0.02, blue: 0.10),
+                    Color(red: 0.01, green: 0.06, blue: 0.22),
+                    Color(red: 0.04, green: 0.10, blue: 0.34),
+                    Color(red: 0.10, green: 0.05, blue: 0.30)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
 
-            ForEach(0..<55, id: \.self) { i in
+            // Ancient underwater ruins silhouettes
+            ForEach(0..<3, id: \.self) { i in
+                RuinPillar()
+                    .fill(Color(red: 0.10, green: 0.14, blue: 0.30).opacity(0.85))
+                    .frame(width: CGFloat(50 + i * 14), height: CGFloat(180 + i * 60))
+                    .position(x: CGFloat(60 + i * 140), y: CGFloat(760 - i * 30))
+            }
+
+            // Bioluminescent drifting particles
+            ForEach(0..<60, id: \.self) { i in
                 Circle()
-                    .fill(.cyan.opacity(0.45))
-                    .frame(width: CGFloat(3 + i % 5), height: CGFloat(3 + i % 5))
+                    .fill([Color.cyan, .purple, .mint, .blue][i % 4].opacity(0.55))
+                    .frame(width: CGFloat(2 + i % 4), height: CGFloat(2 + i % 4))
                     .position(x: CGFloat(20 + (i * 37) % 350), y: bubbles ? CGFloat(60 + (i * 43) % 680) : CGFloat(750 - (i * 39) % 650))
+                    .shadow(color: .cyan.opacity(0.6), radius: 3)
                     .animation(.easeInOut(duration: Double(2.0 + Double(i % 7) * 0.4)).repeatForever(autoreverses: true), value: bubbles)
             }
 
-            ForEach(0..<7, id: \.self) { i in
-                AlienFish(color: [.cyan, .blue, .green, .purple, .orange, .pink, .yellow][i])
-                    .frame(width: 60, height: 32)
+            // Glowing coral city domes in the distance
+            ForEach(0..<4, id: \.self) { i in
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.purple.opacity(glow ? 0.55 : 0.25), Color.clear],
+                                center: .center, startRadius: 4, endRadius: 60
+                            )
+                        )
+                        .frame(width: 110, height: 110)
+
+                    SemiCircle()
+                        .fill([Color.purple, .cyan, .blue, .pink][i].opacity(0.5))
+                        .frame(width: 70, height: 38)
+                }
+                .position(x: CGFloat(60 + i * 95), y: CGFloat(560 + (i % 2) * 40))
+                .animation(.easeInOut(duration: Double(1.6 + Double(i) * 0.3)).repeatForever(autoreverses: true), value: glow)
+            }
+
+            // Giant floating manta-ray aliens drifting through the deep
+            ForEach(0..<2, id: \.self) { i in
+                MantaRayShape()
+                    .fill(LinearGradient(colors: [.purple.opacity(0.85), .blue.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: CGFloat(150 + i * 40), height: CGFloat(90 + i * 24))
+                    .overlay(
+                        MantaRayShape()
+                            .stroke(Color.cyan.opacity(0.6), lineWidth: 2)
+                    )
+                    .shadow(color: .cyan.opacity(0.5), radius: 14)
+                    .rotationEffect(.degrees(i == 0 ? 10 : -8))
+                    .offset(x: mantas ? CGFloat(220 - i * 60) : CGFloat(-220 + i * 60), y: CGFloat(140 + i * 160))
+                    .animation(.easeInOut(duration: Double(9 + i * 2)).repeatForever(autoreverses: true), value: mantas)
+            }
+
+            // Bioluminescent alien fish
+            ForEach(0..<6, id: \.self) { i in
+                AlienFish(color: [.cyan, .purple, .mint, .blue, .pink, .indigo][i])
+                    .frame(width: 56, height: 30)
+                    .shadow(color: .cyan.opacity(0.7), radius: 6)
                     .offset(x: fish ? CGFloat(-200 + i * 75) : CGFloat(210 - i * 65), y: CGFloat(230 + i * 55))
                     .animation(.easeInOut(duration: Double(4.0 + Double(i) * 0.35)).repeatForever(autoreverses: true), value: fish)
             }
 
+            // Glowing coral foreground
             ForEach(0..<7, id: \.self) { i in
-                CoralPiece(color: [.pink, .orange, .purple, .cyan, .yellow, .green, .red][i])
+                CoralPiece(color: [.purple, .cyan, .blue, .mint, .indigo, .pink, .teal][i])
                     .frame(width: 55, height: 95)
+                    .shadow(color: .cyan.opacity(0.45), radius: 8)
                     .position(x: CGFloat(30 + i * 55), y: CGFloat(695 - (i % 2) * 20))
             }
-
-            Text("Oceanus Prime")
-                .font(.system(size: 32, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .position(x: 195, y: 80)
-
-            Text("Coral City Reef")
-                .font(.headline)
-                .foregroundColor(.cyan)
-                .position(x: 195, y: 118)
         }
         .onAppear {
             bubbles = true
             fish = true
+            glow = true
+            mantas = true
         }
+    }
+}
+
+struct RuinPillar: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let columnWidth = rect.width * 0.5
+        let columnX = (rect.width - columnWidth) / 2
+        path.addRect(CGRect(x: columnX, y: rect.height * 0.18, width: columnWidth, height: rect.height * 0.82))
+        path.addRect(CGRect(x: 0, y: 0, width: rect.width, height: rect.height * 0.18))
+        return path
     }
 }
 
