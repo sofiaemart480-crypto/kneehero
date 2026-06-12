@@ -1176,6 +1176,7 @@ struct PlanetArrivalScreen: View {
             .scaleEffect(0.9)
             .offset(x: rocketX, y: rocketY)
             .rotationEffect(.degrees(rocketRotation))
+            .opacity(landingAngle > 0 ? 1 : 0)
             .shadow(color: .cyan.opacity(glow ? 0.9 : 0.25), radius: glow ? 30 : 8)
             .animation(.easeInOut(duration: planetIndex == 1 ? 3.2 : 1.6), value: landingAngle)
 
@@ -1654,16 +1655,46 @@ struct MissionChoiceScreen: View {
                         .shadow(radius: 5)
 
                     if currentPlanetIndex == 1 {
+                        GamePreviewCard(
+                            title: "Flappy Manta",
+                            subtitle: "Tap to glide the manta ray through the coral gaps.",
+                            emoji: "🐠",
+                            color: .blue
+                        )
+
                         Button { screen = "treasureHunt" } label: {
                             Text("Flappy Manta").mainButton(color: .blue)
                         }
+
+                        GamePreviewCard(
+                            title: "Reef Builder",
+                            subtitle: "Tap to place coral and build the reef.",
+                            emoji: "🪸",
+                            color: .purple
+                        )
+
                         Button { screen = "reefBuilder" } label: {
                             Text("Reef Builder").mainButton(color: .purple)
                         }
                     } else if currentPlanetIndex == 2 {
+                        GamePreviewCard(
+                            title: "Ice Crystal Dash",
+                            subtitle: "Tap glowing crystals before they disappear.",
+                            emoji: "💎",
+                            color: .cyan
+                        )
+
                         Button { screen = "iceCrystalDash" } label: {
                             Text("Ice Crystal Dash").mainButton(color: .cyan)
                         }
+
+                        GamePreviewCard(
+                            title: "Penguin Rescue",
+                            subtitle: "Help alien penguins reach their colony.",
+                            emoji: "🐧",
+                            color: .blue
+                        )
+
                         Button { screen = "penguinRescue" } label: {
                             Text("Penguin Rescue").mainButton(color: .blue)
                         }
@@ -2378,31 +2409,26 @@ struct FlappyMantaGameScreen: View {
             }
 
             ZStack {
-                BirdWingShape()
-                    .fill(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 34, height: 22)
-                    .rotationEffect(.degrees(flap ? -50 : 30), anchor: .trailing)
-                    .offset(x: -6, y: flap ? -6 : 4)
+                MantaRayShape()
+                    .fill(LinearGradient(colors: [.purple, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 68, height: 40)
+                    .scaleEffect(y: flap ? 0.8 : 1.05)
                     .animation(.easeOut(duration: 0.15), value: flap)
-
-                Ellipse()
-                    .fill(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 46, height: 32)
 
                 Circle()
                     .fill(.white)
-                    .frame(width: 12, height: 12)
-                    .overlay(Circle().fill(.black).frame(width: 6, height: 6).offset(x: 2))
-                    .offset(x: 14, y: -6)
+                    .frame(width: 8, height: 8)
+                    .overlay(Circle().fill(.black).frame(width: 4, height: 4))
+                    .offset(x: 24, y: -4)
 
                 Triangle()
-                    .fill(.red)
-                    .frame(width: 14, height: 10)
-                    .rotationEffect(.degrees(90))
-                    .offset(x: 26, y: -2)
+                    .fill(.purple.opacity(0.8))
+                    .frame(width: 16, height: 22)
+                    .rotationEffect(.degrees(180))
+                    .offset(x: -30, y: 0)
             }
-            .rotationEffect(.degrees(min(max(velocity * 2, -25), 35)))
-            .shadow(color: .yellow.opacity(0.7), radius: 8)
+            .rotationEffect(.degrees(min(max(velocity * 1.5, -20), 30)))
+            .shadow(color: .cyan.opacity(0.7), radius: 8)
             .position(x: birdX, y: birdY)
 
             GameTopBar(title: "Flappy Manta", count: "Score: \(score)  •  Level \(level)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
@@ -2510,8 +2536,8 @@ struct FlappyMantaGameScreen: View {
                 score += 1
             }
 
-            let withinX = abs(pillars[index].x - birdX) < (pillarWidth / 2 + 14)
-            let withinGap = abs(birdY - pillars[index].gapY) < (pillars[index].gapHeight / 2 - 16)
+            let withinX = abs(pillars[index].x - birdX) < (pillarWidth / 2 + 4)
+            let withinGap = abs(birdY - pillars[index].gapY) < (pillars[index].gapHeight / 2 - 8)
             if withinX && !withinGap {
                 isPlaying = false
             }
@@ -3153,9 +3179,7 @@ struct MissionCompleteScreen: View {
 
                 Button {
                     if currentPlanetIndex < 2 {
-                        currentPlanetIndex = min(currentPlanetIndex + 1, 2)
-                        currentSession = min(currentSession + 1, 3)
-                        screen = "planetArrival"
+                        screen = "planetTransit"
                     } else {
                         screen = "patientDashboard"
                     }
