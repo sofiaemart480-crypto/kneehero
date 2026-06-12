@@ -16,8 +16,11 @@ function defaultState() {
   return {
     screen: "welcome",
     name: "",
+    role: "",
+    accounts: { patient: null, parent: null },
+    hasOnboarded: false,
     avatar: { suit: "#4d9bf2", eyes: "#4dd9e8", rocketBody: "#ffffff", rocketFin: "#ff5d5d", rocketWindow: "#4dd9e8" },
-    plan: { ...DEFAULT_PLAN },
+    plan: { ...DEFAULT_PLAN, isLocked: false },
     currentSession: 1,
     currentPlanetIndex: 0,
     missionTimeRemaining: DEFAULT_PLAN.holdMinutes * 60,
@@ -122,6 +125,9 @@ function render() {
   switch (state.screen) {
     case "welcome": return renderWelcome();
     case "login": return renderLogin();
+    case "signup": return renderSignup();
+    case "ptPlan": return renderPTPlan();
+    case "parentCheckIn": return renderParentCheckIn();
     case "avatarCreator": return renderAvatarCreator();
     case "dashboard": return renderDashboard();
     case "rocketFueling": return renderRocketFueling();
@@ -144,29 +150,202 @@ function renderWelcome() {
       <p class="subtitle">Space Command</p>
       <p class="caption">Rehabilitation missions for knee extension therapy</p>
       <div class="spacer"></div>
-      <button class="btn btn-blue" id="start">Begin Mission</button>
+      <button class="btn btn-blue" id="patientLogin">Patient Login</button>
+      <button class="btn btn-purple" id="parentLogin">Parent Login</button>
+      <button class="btn btn-green" id="ptLogin">PT Login</button>
       <div class="spacer"></div>
     </div>`;
-  document.getElementById("start").onclick = () => go(state.name ? "dashboard" : "login");
+  document.getElementById("patientLogin").onclick = () => { update({ role: "patient" }); go("login"); };
+  document.getElementById("parentLogin").onclick = () => { update({ role: "parent" }); go("login"); };
+  document.getElementById("ptLogin").onclick = () => { update({ role: "pt" }); go("login"); };
 }
 
 function renderLogin() {
+  const role = state.role;
+  const title = role === "pt" ? "PT Login" : role === "parent" ? "Parent Login" : "Patient Login";
+  const helper = role === "pt" ? "Use: pt / 1234" : "Log in, or create an account if this is your first time.";
+
   app.innerHTML = `
     <div class="screen scene-welcome">
       ${starsHTML(40)}
       <div class="spacer"></div>
-      <h1>Astronaut Name</h1>
-      <p class="caption">Stored only in this browser — no account needed.</p>
-      <label for="nameInput">Your name</label>
-      <input id="nameInput" type="text" maxlength="24" autocomplete="given-name" value="${state.name || ""}" placeholder="e.g. Jordan" />
-      <button class="btn btn-cyan" id="go">Continue</button>
+      <h1>${title}</h1>
+      <p class="caption">${helper}</p>
+      <label for="loginUser">Username</label>
+      <input id="loginUser" type="text" autocomplete="username" />
+      <label for="loginPass">Password</label>
+      <input id="loginPass" type="password" autocomplete="current-password" />
+      <p class="caption" id="loginError" style="color:var(--red);"></p>
+      <button class="btn btn-cyan" id="go">Log In</button>
+      ${role !== "pt" ? `<button class="btn btn-orange" id="signup">First Time User: Create Account</button>` : ""}
+      <button class="btn btn-gray" id="back">Back</button>
       <div class="spacer"></div>
     </div>`;
+
   document.getElementById("go").onclick = () => {
-    const val = document.getElementById("nameInput").value.trim();
-    update({ name: val || "Astronaut" });
-    go("avatarCreator");
+    const u = document.getElementById("loginUser").value.trim().toLowerCase();
+    const p = document.getElementById("loginPass").value.trim();
+    const err = document.getElementById("loginError");
+
+    if (role === "pt") {
+      if (u === "pt" && p === "1234") {
+        update({ name: "PT" });
+        go("ptPlan");
+      } else {
+        err.textContent = "Invalid login";
+      }
+    } else if (role === "patient") {
+      const acc = state.accounts.patient;
+      if (acc && u === acc.username.toLowerCase() && p === acc.password) {
+        update({ name: acc.username });
+        go(state.hasOnboarded ? "dashboard" : "avatarCreator");
+      } else {
+        err.textContent = "Invalid login";
+      }
+    } else {
+      const acc = state.accounts.parent;
+      if (acc && u === acc.username.toLowerCase() && p === acc.password) {
+        update({ name: acc.username });
+        go("parentCheckIn");
+      } else {
+        err.textContent = "Invalid login";
+      }
+    }
   };
+
+  if (role !== "pt") {
+    document.getElementById("signup").onclick = () => go("signup");
+  }
+  document.getElementById("back").onclick = () => go("welcome");
+}
+
+function renderSignup() {
+  const role = state.role;
+  const title = role === "parent" ? "Create Parent Account" : "Create Patient Account";
+
+  app.innerHTML = `
+    <div class="screen scene-welcome">
+      ${starsHTML(40)}
+      <div class="spacer"></div>
+      <h1>${title}</h1>
+      <p class="caption">Set a username and password for first-time login.</p>
+      <label for="suUser">Username</label>
+      <input id="suUser" type="text" autocomplete="username" />
+      <label for="suPass">Password</label>
+      <input id="suPass" type="password" autocomplete="new-password" />
+      <label for="suConfirm">Confirm Password</label>
+      <input id="suConfirm" type="password" autocomplete="new-password" />
+      <p class="caption" id="suError" style="color:var(--red);"></p>
+      <button class="btn btn-cyan" id="create">Create Account</button>
+      <button class="btn btn-gray" id="back">Back to Login</button>
+      <div class="spacer"></div>
+    </div>`;
+
+  document.getElementById("create").onclick = () => {
+    const u = document.getElementById("suUser").value.trim();
+    const p = document.getElementById("suPass").value.trim();
+    const c = document.getElementById("suConfirm").value.trim();
+    const err = document.getElementById("suError");
+
+    if (u.length < 3) { err.textContent = "Username must be at least 3 characters."; return; }
+    if (p.length < 4) { err.textContent = "Password must be at least 4 characters."; return; }
+    if (p !== c) { err.textContent = "Passwords do not match."; return; }
+
+    state.accounts[role] = { username: u, password: p };
+    saveState();
+    go("login");
+  };
+  document.getElementById("back").onclick = () => go("login");
+}
+
+function renderPTPlan() {
+  const p = state.plan;
+  const row = (label, key, unit) => `
+    <div class="card" style="justify-content:space-between;">
+      <div class="text"><h3>${label}</h3><p>${p[key]}${unit}</p></div>
+      <div class="btn-row" style="width:auto;">
+        <button class="btn btn-gray" style="margin:0; padding:8px 14px; min-height:0;" data-dec="${key}" ${p.isLocked ? "disabled" : ""} aria-label="Decrease ${label}">−</button>
+        <button class="btn btn-gray" style="margin:0; padding:8px 14px; min-height:0;" data-inc="${key}" ${p.isLocked ? "disabled" : ""} aria-label="Increase ${label}">+</button>
+      </div>
+    </div>`;
+
+  app.innerHTML = `
+    <div class="screen scene-welcome">
+      ${starsHTML(30)}
+      <h1>PT Treatment Plan</h1>
+      <p class="caption">Only the physical therapist can edit and lock prescribed targets. Patients cannot modify treatment parameters.</p>
+      ${row("Session 1 Target", "session1Angle", "°")}
+      ${row("Session 2 Target", "session2Angle", "°")}
+      ${row("Session 3 Target", "session3Angle", "°")}
+      ${row("Hold Time", "holdMinutes", " min")}
+      ${p.isLocked ? `<p class="caption" style="color:var(--green); font-weight:800;">Treatment Plan Locked</p>` : ""}
+      <button class="btn ${p.isLocked ? "btn-gray" : "btn-green"}" id="lock" ${p.isLocked ? "disabled" : ""}>${p.isLocked ? "Plan Already Locked" : "Lock Treatment Plan"}</button>
+      ${p.isLocked ? `
+        <button class="btn btn-orange" id="unlockToggle">Unlock with PT Password</button>
+        <div id="unlockBox" style="display:none;">
+          <input id="unlockPass" type="password" placeholder="PT Password" />
+          <p class="caption" id="unlockError" style="color:var(--red);"></p>
+          <button class="btn btn-red" id="confirmUnlock">Confirm Unlock</button>
+        </div>` : ""}
+      <button class="btn btn-blue" id="viewDash">View Patient Dashboard</button>
+      <button class="btn btn-gray" id="logout">Log Out</button>
+    </div>`;
+
+  app.querySelectorAll("[data-inc]").forEach(btn => btn.onclick = () => {
+    const k = btn.dataset.inc;
+    p[k] = Math.min(180, p[k] + 1);
+    saveState();
+    renderPTPlan();
+  });
+  app.querySelectorAll("[data-dec]").forEach(btn => btn.onclick = () => {
+    const k = btn.dataset.dec;
+    p[k] = Math.max(1, p[k] - 1);
+    saveState();
+    renderPTPlan();
+  });
+
+  document.getElementById("lock").onclick = () => { p.isLocked = true; saveState(); renderPTPlan(); };
+
+  if (p.isLocked) {
+    document.getElementById("unlockToggle").onclick = () => {
+      const box = document.getElementById("unlockBox");
+      box.style.display = box.style.display === "none" ? "block" : "none";
+    };
+    document.getElementById("confirmUnlock").onclick = () => {
+      const val = document.getElementById("unlockPass").value.trim();
+      if (val === "1234") {
+        p.isLocked = false;
+        saveState();
+        renderPTPlan();
+      } else {
+        document.getElementById("unlockError").textContent = "Incorrect PT password";
+      }
+    };
+  }
+
+  document.getElementById("viewDash").onclick = () => go("dashboard");
+  document.getElementById("logout").onclick = () => { update({ role: "" }); go("welcome"); };
+}
+
+function renderParentCheckIn() {
+  const p = state.plan;
+  const card = (title, value) => `<div class="card"><div class="text"><h3>${title}</h3><p>${value}</p></div></div>`;
+
+  app.innerHTML = `
+    <div class="screen scene-welcome">
+      ${starsHTML(30)}
+      <h1>Parent Check-In</h1>
+      <p class="caption">Quick view to confirm the patient is staying on track.</p>
+      ${card("Current Session", `Session ${state.currentSession} of 3`)}
+      ${card("Current Planet", planet(state.currentPlanetIndex).name)}
+      ${card("Plan Status", p.isLocked ? "PT plan locked" : "PT plan not locked yet")}
+      ${card("Targets", `S1: ${p.session1Angle}°&nbsp;&nbsp; S2: ${p.session2Angle}°&nbsp;&nbsp; S3: ${p.session3Angle}°`)}
+      ${card("Hold Time", `${p.holdMinutes} minutes per session`)}
+      ${card("Mission Timer", `${formatTime(state.missionTimeRemaining)} remaining`)}
+      <button class="btn btn-gray" id="logout">Log Out</button>
+    </div>`;
+
+  document.getElementById("logout").onclick = () => { update({ role: "" }); go("welcome"); };
 }
 
 function renderAvatarCreator() {
@@ -194,7 +373,10 @@ function renderAvatarCreator() {
     saveState();
     renderAvatarCreator();
   });
-  document.getElementById("save").onclick = () => go("dashboard");
+  document.getElementById("save").onclick = () => {
+    update({ hasOnboarded: true });
+    go("dashboard");
+  };
 }
 
 function renderDashboard() {
@@ -222,8 +404,11 @@ function renderDashboard() {
       ${starsHTML(30)}
       <h1>Mission Control</h1>
       <p class="subtitle">Welcome back, ${state.name}</p>
+      <p class="caption" style="color:${state.plan.isLocked ? "var(--green)" : "var(--orange)"}; font-weight:800;">
+        ${state.plan.isLocked ? "Treatment plan locked by your PT" : "Waiting for your PT to lock the treatment plan"}
+      </p>
       ${sessionCards}
-      <button class="btn btn-cyan" id="startMission">Start Assigned Mission (Session ${state.currentSession})</button>
+      <button class="btn ${state.plan.isLocked ? "btn-cyan" : "btn-gray"}" id="startMission" ${state.plan.isLocked ? "" : "disabled"}>Start Assigned Mission (Session ${state.currentSession})</button>
       <button class="btn btn-orange" id="editGear">Edit Mission Gear</button>
 
       <div class="panel">
@@ -244,7 +429,7 @@ function renderDashboard() {
   };
   document.getElementById("editGear").onclick = () => go("avatarCreator");
   document.getElementById("export").onclick = exportHistoryCSV;
-  document.getElementById("logout").onclick = () => go("welcome");
+  document.getElementById("logout").onclick = () => { update({ role: "" }); go("welcome"); };
 }
 
 function exportHistoryCSV() {
