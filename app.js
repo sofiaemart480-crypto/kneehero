@@ -122,6 +122,34 @@ function swatchRow(label, key, value, onPick) {
   return `<div class="swatch-row"><div class="label">${label}</div><div class="swatches" data-swatch-key="${key}">${swatches}</div></div>`;
 }
 
+function astronautSVG(a, size = 140) {
+  return `
+  <svg width="${size}" height="${size}" viewBox="0 0 100 100" aria-label="Astronaut preview">
+    <rect x="20" y="10" width="60" height="20" rx="8" fill="${a.patchColor}"/>
+    <rect x="25" y="30" width="50" height="50" rx="16" fill="${a.suitBaseColor}" stroke="#000" stroke-opacity="0.1" stroke-width="2"/>
+    <rect x="25" y="46" width="50" height="8" fill="${a.suitStripeColor}"/>
+    <rect x="35" y="42" width="30" height="20" rx="6" fill="${a.chestPanelColor}"/>
+    <circle cx="50" cy="20" r="18" fill="${a.suitBaseColor}" stroke="#000" stroke-opacity="0.1" stroke-width="2"/>
+    <circle cx="50" cy="20" r="11" fill="${a.eyeColor}"/>
+    <rect x="10" y="35" width="14" height="35" rx="7" fill="${a.gloveBootColor}"/>
+    <rect x="76" y="35" width="14" height="35" rx="7" fill="${a.gloveBootColor}"/>
+    <rect x="32" y="78" width="14" height="18" rx="5" fill="${a.gloveBootColor}"/>
+    <rect x="54" y="78" width="14" height="18" rx="5" fill="${a.gloveBootColor}"/>
+  </svg>`;
+}
+
+function rocketSVG(a, size = 140) {
+  return `
+  <svg width="${size}" height="${size}" viewBox="0 0 100 100" aria-label="Rocket preview">
+    <polygon points="50,5 65,30 35,30" fill="${a.rocketNoseColor}"/>
+    <rect x="35" y="30" width="30" height="45" rx="10" fill="${a.rocketBodyColor}" stroke="#000" stroke-opacity="0.1" stroke-width="2"/>
+    <circle cx="50" cy="45" r="9" fill="${a.rocketWindowColor}"/>
+    <polygon points="35,55 18,80 35,75" fill="${a.rocketFinColor}"/>
+    <polygon points="65,55 82,80 65,75" fill="${a.rocketFinColor}"/>
+    <polygon points="42,75 58,75 50,95" fill="${a.rocketFinColor}"/>
+  </svg>`;
+}
+
 function attachSwatchHandlers(root, onPick) {
   root.querySelectorAll("[data-swatch-key]").forEach(group => {
     const key = group.dataset.swatchKey;
@@ -141,6 +169,8 @@ function render() {
     case "ptPlan": return renderPTPlan();
     case "parentCheckIn": return renderParentCheckIn();
     case "avatarCreator": return renderAvatarCreator();
+    case "rocketCreator": return renderRocketCreator();
+    case "notes": return renderNotes();
     case "dashboard": return renderDashboard();
     case "rocketFueling": return renderRocketFueling();
     case "launch": return renderLaunch();
@@ -320,7 +350,6 @@ function renderPTPlan() {
           <p class="caption" id="unlockError" style="color:var(--red);"></p>
           <button class="btn btn-red" id="confirmUnlock">Confirm Unlock</button>
         </div>` : ""}
-      <button class="btn btn-blue" id="viewDash">View Patient Dashboard</button>
       <button class="btn btn-gray" id="logout">Log Out</button>
     </div>`;
 
@@ -356,7 +385,6 @@ function renderPTPlan() {
     };
   }
 
-  document.getElementById("viewDash").onclick = () => go("dashboard");
   document.getElementById("logout").onclick = () => { update({ role: "" }); go("welcome"); };
 }
 
@@ -386,30 +414,58 @@ function renderAvatarCreator() {
   app.innerHTML = `
     <div class="screen scene-aurora">
       ${starsHTML(40)}
-      <h1>Customize Your Gear</h1>
+      <h1>Customize Your Astronaut</h1>
       <p class="subtitle">Welcome, ${state.name}</p>
       <div class="panel">
-        <div style="text-align:center; font-size:4rem;">🧑‍🚀</div>
-        ${swatchRow("Suit", "suit", a.suit)}
-        ${swatchRow("Eyes", "eyes", a.eyes)}
+        <div style="text-align:center;">${astronautSVG(a)}</div>
+        ${swatchRow("Eyes", "eyeColor", a.eyeColor)}
+        ${swatchRow("Suit", "suitBaseColor", a.suitBaseColor)}
+        ${swatchRow("Stripes", "suitStripeColor", a.suitStripeColor)}
+        ${swatchRow("Chest Panel", "chestPanelColor", a.chestPanelColor)}
+        ${swatchRow("Gloves & Boots", "gloveBootColor", a.gloveBootColor)}
+        ${swatchRow("Patch", "patchColor", a.patchColor)}
       </div>
-      <div class="panel">
-        <div style="text-align:center; font-size:4rem;">🚀</div>
-        ${swatchRow("Body", "rocketBody", a.rocketBody)}
-        ${swatchRow("Fins", "rocketFin", a.rocketFin)}
-        ${swatchRow("Window", "rocketWindow", a.rocketWindow)}
-      </div>
-      <button class="btn btn-cyan" id="save">Save & Continue</button>
+      <button class="btn btn-cyan" id="next">Next: Customize Rocket</button>
+      ${state.hasOnboarded ? `<button class="btn btn-gray" id="back">Back</button>` : ""}
     </div>`;
   attachSwatchHandlers(app, (key, color) => {
     state.avatar[key] = color;
     saveState();
     renderAvatarCreator();
   });
+  document.getElementById("next").onclick = () => go("rocketCreator");
+  if (state.hasOnboarded) {
+    document.getElementById("back").onclick = () => go("dashboard");
+  }
+}
+
+function renderRocketCreator() {
+  const a = state.avatar;
+  app.innerHTML = `
+    <div class="screen scene-aurora">
+      ${starsHTML(40)}
+      <h1>Customize Your Rocket</h1>
+      <p class="subtitle">Welcome, ${state.name}</p>
+      <div class="panel">
+        <div style="text-align:center;">${rocketSVG(a)}</div>
+        ${swatchRow("Body", "rocketBodyColor", a.rocketBodyColor)}
+        ${swatchRow("Nose", "rocketNoseColor", a.rocketNoseColor)}
+        ${swatchRow("Fins", "rocketFinColor", a.rocketFinColor)}
+        ${swatchRow("Window", "rocketWindowColor", a.rocketWindowColor)}
+      </div>
+      <button class="btn btn-cyan" id="save">Save Mission Gear</button>
+      <button class="btn btn-gray" id="back">Back to Astronaut</button>
+    </div>`;
+  attachSwatchHandlers(app, (key, color) => {
+    state.avatar[key] = color;
+    saveState();
+    renderRocketCreator();
+  });
   document.getElementById("save").onclick = () => {
     update({ hasOnboarded: true });
     go("dashboard");
   };
+  document.getElementById("back").onclick = () => go("avatarCreator");
 }
 
 function renderDashboard() {
