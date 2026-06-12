@@ -19,7 +19,19 @@ function defaultState() {
     role: "",
     accounts: { patient: null, parent: null },
     hasOnboarded: false,
-    avatar: { suit: "#4d9bf2", eyes: "#4dd9e8", rocketBody: "#ffffff", rocketFin: "#ff5d5d", rocketWindow: "#4dd9e8" },
+    therapistNotes: "PT Notes:\n- Complete all assigned sessions.\n- Keep the brace aligned with the knee joint.\n- Stop if pain feels sharp or unsafe.",
+    avatar: {
+      eyeColor: "#8a5a2b",
+      suitBaseColor: "#ffffff",
+      suitStripeColor: "#4d9bf2",
+      chestPanelColor: "#222222",
+      gloveBootColor: "#4d9bf2",
+      patchColor: "#ff9f4d",
+      rocketBodyColor: "#ffffff",
+      rocketNoseColor: "#ff5d5d",
+      rocketFinColor: "#ff5d5d",
+      rocketWindowColor: "#4dd9e8"
+    },
     plan: { ...DEFAULT_PLAN, isLocked: false },
     currentSession: 1,
     currentPlanetIndex: 0,
@@ -145,6 +157,9 @@ function renderWelcome() {
   app.innerHTML = `
     <div class="screen scene-welcome">
       ${starsHTML(70)}
+      <div style="display:flex; justify-content:flex-start; width:100%;">
+        <button class="btn btn-gray" id="notesBtn" style="width:auto; margin:8px 0; padding:8px 14px;">📝 Notes</button>
+      </div>
       <div class="spacer"></div>
       <h1>KneeHero</h1>
       <p class="subtitle">Space Command</p>
@@ -155,9 +170,27 @@ function renderWelcome() {
       <button class="btn btn-green" id="ptLogin">PT Login</button>
       <div class="spacer"></div>
     </div>`;
+  document.getElementById("notesBtn").onclick = () => go("notes");
   document.getElementById("patientLogin").onclick = () => { update({ role: "patient" }); go("login"); };
   document.getElementById("parentLogin").onclick = () => { update({ role: "parent" }); go("login"); };
   document.getElementById("ptLogin").onclick = () => { update({ role: "pt" }); go("login"); };
+}
+
+function renderNotes() {
+  app.innerHTML = `
+    <div class="screen scene-welcome">
+      ${starsHTML(30)}
+      <h1>Therapist Notes</h1>
+      <p class="caption">Comments, reminders, and safety notes from the PT.</p>
+      <textarea id="notesInput" rows="10" style="width:100%; max-width:360px; display:block; margin:8px auto; padding:14px; border-radius:12px; border:none; font-size:1rem; background:rgba(255,255,255,0.92); color:#111; font-family:inherit;">${state.therapistNotes}</textarea>
+      <button class="btn btn-cyan" id="save">Save Notes</button>
+      <button class="btn btn-gray" id="back">Back</button>
+    </div>`;
+  document.getElementById("save").onclick = () => {
+    update({ therapistNotes: document.getElementById("notesInput").value });
+    go("welcome");
+  };
+  document.getElementById("back").onclick = () => go("welcome");
 }
 
 function renderLogin() {
