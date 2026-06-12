@@ -295,14 +295,15 @@ function renderRocketFueling() {
 }
 
 function renderLaunch() {
+  const dest = planet(state.currentPlanetIndex);
   app.innerHTML = `
-    <div class="screen ${planet(state.currentPlanetIndex).scene}" id="launchScreen" style="justify-content:center;">
+    <div class="screen scene-welcome" id="launchScreen" style="justify-content:center;">
       ${starsHTML(60)}
-      <h1 id="launchTitle">Leaving ${planet(state.currentPlanetIndex).name}</h1>
+      <h1 id="launchTitle">Launching toward ${dest.name}</h1>
       <div id="rocketWrap" style="position:relative; flex:1; width:100%;">
         <div class="rocket" id="rocket" style="left:50%; top:70%; transform:translate(-50%,0) rotate(0deg);">🚀</div>
       </div>
-      <p class="caption">Launching from ${planet(state.currentPlanetIndex).name}…</p>
+      <p class="caption">Get ready to take the controls for landing…</p>
     </div>`;
 
   const rocket = document.getElementById("rocket");
@@ -312,9 +313,6 @@ function renderLaunch() {
   });
 
   setTimeout(() => {
-    state.currentPlanetIndex = Math.min(state.currentPlanetIndex + 1, 2);
-    state.currentSession = Math.min(state.currentSession + 1, 3);
-    saveState();
     go("planetArrival");
   }, 2200);
 }
@@ -462,8 +460,15 @@ function renderMissionComplete() {
       <button class="btn btn-cyan" id="next">${last ? "Launch Next Mission" : "Return to Dashboard"}</button>
     </div>`;
   document.getElementById("next").onclick = () => {
-    if (last) go("launch");
-    else go("dashboard");
+    if (last) {
+      state.currentPlanetIndex = Math.min(state.currentPlanetIndex + 1, 2);
+      state.currentSession = Math.min(state.currentSession + 1, 3);
+      state.fuel = 0;
+      saveState();
+      go("rocketFueling");
+    } else {
+      go("dashboard");
+    }
   };
 }
 
