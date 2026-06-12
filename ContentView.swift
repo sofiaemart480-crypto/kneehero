@@ -30,13 +30,13 @@ struct AvatarProfile {
 func planetName(_ index: Int) -> String {
     if index == 0 { return "Aurora Shores" }
     if index == 1 { return "Oceanus Prime" }
-    return "Nebula Ridge"
+    return "Frost Nova"
 }
 
 func planetSubtitle(_ index: Int) -> String {
     if index == 0 { return "Crystal Lagoon" }
     if index == 1 { return "Coral City Reef" }
-    return "Starlight Canyon"
+    return "Crystal Glacier Caves"
 }
 
 func targetAngle(for session: Int, plan: TreatmentPlan) -> Int {
@@ -108,12 +108,18 @@ struct ContentView: View {
                 FlappyMantaGameScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "reefBuilder":
                 ReefBuilderScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
+            case "iceCrystalDash":
+                IceCrystalDashScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
+            case "penguinRescue":
+                PenguinRescueScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "missionTimerOnly":
                 MissionTimerOnlyScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "landingCongrats":
                 LandingCongratsScreen(screen: $screen)
             case "secondLandingCongrats":
                 SecondLandingCongratsScreen(screen: $screen)
+            case "thirdLandingCongrats":
+                ThirdLandingCongratsScreen(screen: $screen)
             case "missionComplete":
                 MissionCompleteScreen(screen: $screen, currentPlanetIndex: $currentPlanetIndex)
             case "planetTransit":
@@ -1142,6 +1148,8 @@ struct PlanetArrivalScreen: View {
         ZStack {
             if planetIndex == 1 {
                 OceanusPrimeScene()
+            } else if planetIndex == 2 {
+                FrostNovaScene()
             } else {
                 CrystalLagoonScene()
             }
@@ -1178,7 +1186,7 @@ struct PlanetArrivalScreen: View {
                 Spacer()
 
                 VStack(spacing: 10) {
-                    Text(landingComplete ? (planetIndex == 1 ? "Congrats! You completed your second landing alignment." : "Congrats! You completed your first landing alignment.") : "Landing Alignment")
+                    Text(landingComplete ? (planetIndex == 2 ? "Congrats! You completed your third landing alignment." : planetIndex == 1 ? "Congrats! You completed your second landing alignment." : "Congrats! You completed your first landing alignment.") : "Landing Alignment")
                         .font(.headline)
                         .foregroundColor(landingComplete ? .yellow : .white)
                         .multilineTextAlignment(.center)
@@ -1204,6 +1212,8 @@ struct PlanetArrivalScreen: View {
                                         screen = "landingCongrats"
                                     } else if planetIndex == 1 {
                                         screen = "secondLandingCongrats"
+                                    } else if planetIndex == 2 {
+                                        screen = "thirdLandingCongrats"
                                     } else {
                                         screen = "missionChoice"
                                     }
@@ -1541,7 +1551,7 @@ struct PlanetTransitScreen: View {
             } else if phase < 4 {
                 AuroraToOceanusDeepSpaceScene(animate: true)
             } else {
-                nextPlanetIndex == 1 ? AnyView(OceanusPrimeScene()) : AnyView(NebulaRidgeScene())
+                nextPlanetIndex == 1 ? AnyView(OceanusPrimeScene()) : AnyView(FrostNovaScene())
             }
 
             RocketView(
@@ -1555,15 +1565,16 @@ struct PlanetTransitScreen: View {
             )
             .scaleEffect(phase < 4 ? 1.0 : 0.9)
             .rotationEffect(.degrees(phase == 2 || phase == 3 ? 35 : 0))
+            .opacity(phase < 4 ? 1 : 0)
             .offset(
                 x: phase == 2 || phase == 3 ? (rocketMove ? 105 : -105) : 0,
-                y: phase == 0 ? 230 : phase == 1 ? -420 : phase == 4 ? (rocketMove ? 250 : -340) : 0
+                y: phase == 0 ? 230 : phase == 1 ? -420 : 0
             )
             .animation(.easeInOut(duration: 2.0), value: phase)
             .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: rocketMove)
 
             VStack {
-                Text(phase < 2 ? "Leaving \(planetName(currentPlanetIndex))" : phase < 4 ? "" : "Arriving at Oceanus Prime")
+                Text(phase < 2 ? "Leaving \(planetName(currentPlanetIndex))" : phase < 4 ? "" : "Arriving at \(planetName(nextPlanetIndex))")
                     .font(.system(size: 28, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.top, 80)
@@ -1571,7 +1582,7 @@ struct PlanetTransitScreen: View {
 
                 Spacer()
 
-                Text(phase < 2 ? "Launching from Aurora Shores" : phase < 4 ? "" : "Prepare for Oceanus Prime landing")
+                Text(phase < 2 ? "Launching from \(planetName(currentPlanetIndex))" : phase < 4 ? "" : "Get ready to take the controls for landing")
                     .font(.headline)
                     .foregroundColor(.cyan)
                     .padding(.bottom, 35)
@@ -1608,6 +1619,8 @@ struct MissionChoiceScreen: View {
         ZStack {
             if currentPlanetIndex == 1 {
                 OceanusPrimeScene().ignoresSafeArea()
+            } else if currentPlanetIndex == 2 {
+                FrostNovaScene().ignoresSafeArea()
             } else {
                 CrystalLagoonScene().ignoresSafeArea()
             }
@@ -1640,6 +1653,13 @@ struct MissionChoiceScreen: View {
                         }
                         Button { screen = "reefBuilder" } label: {
                             Text("Reef Builder").mainButton(color: .purple)
+                        }
+                    } else if currentPlanetIndex == 2 {
+                        Button { screen = "iceCrystalDash" } label: {
+                            Text("Ice Crystal Dash").mainButton(color: .cyan)
+                        }
+                        Button { screen = "penguinRescue" } label: {
+                            Text("Penguin Rescue").mainButton(color: .blue)
                         }
                     } else {
                         GamePreviewCard(
@@ -2293,6 +2313,7 @@ struct FlappyPillar: Identifiable {
     let id: Int
     var x: CGFloat
     var gapY: CGFloat
+    var gapHeight: CGFloat
     var passed: Bool = false
 }
 
@@ -2313,11 +2334,23 @@ struct FlappyMantaGameScreen: View {
     @State private var flap = false
 
     let birdX: CGFloat = 100
-    let gapHeight: CGFloat = 220
+    let baseGapHeight: CGFloat = 220
     let pillarWidth: CGFloat = 60
     let gravity: CGFloat = 1.1
     let flapStrength: CGFloat = -16
-    let scrollSpeed: CGFloat = 2.4
+    let baseScrollSpeed: CGFloat = 2.4
+
+    var level: Int {
+        score / 5 + 1
+    }
+
+    var scrollSpeed: CGFloat {
+        min(baseScrollSpeed + CGFloat(level - 1) * 0.4, 6.0)
+    }
+
+    var currentGapHeight: CGFloat {
+        max(baseGapHeight - CGFloat(level - 1) * 14, 130)
+    }
 
     var body: some View {
         ZStack {
@@ -2326,27 +2359,47 @@ struct FlappyMantaGameScreen: View {
             ForEach(pillars) { pillar in
                 VStack(spacing: 0) {
                     CoralPiece(color: .pink)
-                        .frame(width: pillarWidth, height: pillar.gapY - gapHeight / 2)
+                        .frame(width: pillarWidth, height: pillar.gapY - pillar.gapHeight / 2)
                         .frame(maxHeight: .infinity, alignment: .top)
                     Spacer()
-                        .frame(height: gapHeight)
+                        .frame(height: pillar.gapHeight)
                     CoralPiece(color: .purple)
-                        .frame(width: pillarWidth, height: 800 - (pillar.gapY + gapHeight / 2))
+                        .frame(width: pillarWidth, height: 800 - (pillar.gapY + pillar.gapHeight / 2))
                         .frame(maxHeight: .infinity, alignment: .bottom)
                 }
                 .frame(height: 800)
                 .position(x: pillar.x, y: 400)
             }
 
-            MantaRayShape()
-                .fill(LinearGradient(colors: [.purple, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 64, height: 40)
-                .rotationEffect(.degrees(flap ? -18 : 12))
-                .shadow(color: .cyan.opacity(0.8), radius: 10)
-                .position(x: birdX, y: birdY)
-                .animation(.easeOut(duration: 0.2), value: flap)
+            ZStack {
+                BirdWingShape()
+                    .fill(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                    .frame(width: 34, height: 22)
+                    .rotationEffect(.degrees(flap ? -50 : 30), anchor: .trailing)
+                    .offset(x: -6, y: flap ? -6 : 4)
+                    .animation(.easeOut(duration: 0.15), value: flap)
 
-            GameTopBar(title: "Flappy Manta", count: "Score: \(score)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
+                Ellipse()
+                    .fill(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
+                    .frame(width: 46, height: 32)
+
+                Circle()
+                    .fill(.white)
+                    .frame(width: 12, height: 12)
+                    .overlay(Circle().fill(.black).frame(width: 6, height: 6).offset(x: 2))
+                    .offset(x: 14, y: -6)
+
+                Triangle()
+                    .fill(.red)
+                    .frame(width: 14, height: 10)
+                    .rotationEffect(.degrees(90))
+                    .offset(x: 26, y: -2)
+            }
+            .rotationEffect(.degrees(min(max(velocity * 2, -25), 35)))
+            .shadow(color: .yellow.opacity(0.7), radius: 8)
+            .position(x: birdX, y: birdY)
+
+            GameTopBar(title: "Flappy Manta", count: "Score: \(score)  •  Level \(level)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
 
             VStack {
                 Spacer()
@@ -2417,9 +2470,9 @@ struct FlappyMantaGameScreen: View {
         score = 0
         nextPillarID = 0
         pillars = [
-            FlappyPillar(id: nextPillar(), x: 420, gapY: 380),
-            FlappyPillar(id: nextPillar(), x: 660, gapY: 280),
-            FlappyPillar(id: nextPillar(), x: 900, gapY: 460)
+            FlappyPillar(id: nextPillar(), x: 420, gapY: 380, gapHeight: baseGapHeight),
+            FlappyPillar(id: nextPillar(), x: 660, gapY: 280, gapHeight: baseGapHeight),
+            FlappyPillar(id: nextPillar(), x: 900, gapY: 460, gapHeight: baseGapHeight)
         ]
     }
 
@@ -2452,7 +2505,7 @@ struct FlappyMantaGameScreen: View {
             }
 
             let withinX = abs(pillars[index].x - birdX) < (pillarWidth / 2 + 22)
-            let withinGap = abs(birdY - pillars[index].gapY) < (gapHeight / 2 - 10)
+            let withinGap = abs(birdY - pillars[index].gapY) < (pillars[index].gapHeight / 2 - 10)
             if withinX && !withinGap {
                 isPlaying = false
             }
@@ -2461,7 +2514,7 @@ struct FlappyMantaGameScreen: View {
         if let first = pillars.first, first.x < -pillarWidth {
             pillars.removeFirst()
             let lastX = pillars.last?.x ?? 420
-            pillars.append(FlappyPillar(id: nextPillar(), x: lastX + 240, gapY: CGFloat.random(in: 220...560)))
+            pillars.append(FlappyPillar(id: nextPillar(), x: lastX + 240, gapY: CGFloat.random(in: 200...580), gapHeight: currentGapHeight))
         }
     }
 
@@ -2472,6 +2525,17 @@ struct FlappyMantaGameScreen: View {
 
     func formatTime(_ seconds: Int) -> String {
         "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
+struct BirdWingShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.maxX, y: rect.midY))
+        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.minY), control: CGPoint(x: rect.midX, y: rect.minY))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.midY), control: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -2569,6 +2633,221 @@ struct ReefBuilderScreen: View {
     }
 }
 
+// MARK: - Frost Nova Games
+
+struct IceCrystal: Identifiable {
+    let id: Int
+    var x: CGFloat
+    var y: CGFloat
+    var color: Color
+    var life: Double
+}
+
+struct IceCrystalDashScreen: View {
+    @Binding var screen: String
+    @Binding var currentSession: Int
+    @Binding var currentPlanetIndex: Int
+    @Binding var missionTimeRemaining: Int
+    @Binding var timerRunning: Bool
+
+    @State private var showHowToPlay = true
+    @State private var crystals: [IceCrystal] = []
+    @State private var nextID = 0
+    @State private var score = 0
+
+    let crystalColors: [Color] = [.cyan, .white, .blue, .mint, .purple]
+
+    var body: some View {
+        ZStack {
+            FrostNovaScene()
+
+            ForEach(crystals) { crystal in
+                Diamond()
+                    .fill(crystal.color.opacity(min(crystal.life, 1.0)))
+                    .frame(width: 36, height: 36)
+                    .shadow(color: crystal.color.opacity(0.85), radius: 10)
+                    .position(x: crystal.x, y: crystal.y)
+                    .onTapGesture {
+                        score += 1
+                        crystals.removeAll { $0.id == crystal.id }
+                    }
+            }
+
+            GameTopBar(title: "Ice Crystal Dash", count: "Crystals Collected: \(score)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
+
+            VStack {
+                Spacer()
+                HStack(spacing: 8) {
+                    Button { screen = "penguinRescue" } label: {
+                        Text("Penguins").mainButton(color: .blue)
+                    }
+                    Button { screen = "missionTimerOnly" } label: {
+                        Text("Timer").mainButton(color: .green)
+                    }
+                }
+                .padding(.horizontal, 22)
+
+                Button { finishSession() } label: {
+                    Text("Finish Session").mainButton(color: .green)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 28)
+            }
+
+            if showHowToPlay {
+                HowToPlayPopup(title: "How to Play", message: "Glowing ice crystals appear across the glacier. Tap them quickly before they fade away to collect them. Your mission timer keeps running even if you switch activities.", buttonText: "Start Dash", closeAction: { showHowToPlay = false })
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            timerRunning = true
+        }
+        .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
+            guard !showHowToPlay else { return }
+
+            for index in crystals.indices {
+                crystals[index].life -= 0.025
+            }
+            crystals.removeAll { $0.life <= 0 }
+
+            if crystals.count < 5 && Int.random(in: 0...3) == 0 {
+                crystals.append(
+                    IceCrystal(
+                        id: nextID,
+                        x: CGFloat.random(in: 40...350),
+                        y: CGFloat.random(in: 160...700),
+                        color: crystalColors.randomElement() ?? .cyan,
+                        life: 1.0
+                    )
+                )
+                nextID += 1
+            }
+        }
+    }
+
+    func finishSession() {
+        timerRunning = false
+        screen = "missionComplete"
+    }
+
+    func formatTime(_ seconds: Int) -> String {
+        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
+struct AlienPenguin: Identifiable {
+    let id: Int
+    var x: CGFloat
+    var y: CGFloat
+    var traveling: Bool = false
+}
+
+struct PenguinRescueScreen: View {
+    @Binding var screen: String
+    @Binding var currentSession: Int
+    @Binding var currentPlanetIndex: Int
+    @Binding var missionTimeRemaining: Int
+    @Binding var timerRunning: Bool
+
+    @State private var showHowToPlay = true
+    @State private var penguins: [AlienPenguin] = []
+    @State private var nextID = 0
+    @State private var rescued = 0
+
+    let colonyPoint = CGPoint(x: 330, y: 700)
+
+    var body: some View {
+        ZStack {
+            FrostNovaScene()
+
+            ZStack {
+                Ellipse()
+                    .fill(Color.cyan.opacity(0.35))
+                    .frame(width: 130, height: 90)
+                Text("🏠")
+                    .font(.system(size: 46))
+            }
+            .position(x: colonyPoint.x, y: colonyPoint.y)
+
+            ForEach(penguins) { penguin in
+                Text("🐧")
+                    .font(.system(size: 40))
+                    .position(x: penguin.x, y: penguin.y)
+                    .animation(.easeInOut(duration: 0.9), value: penguin.x)
+                    .animation(.easeInOut(duration: 0.9), value: penguin.y)
+                    .onTapGesture {
+                        sendHome(penguin)
+                    }
+            }
+
+            GameTopBar(title: "Penguin Rescue", count: "Rescued: \(rescued)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
+
+            VStack {
+                Spacer()
+                HStack(spacing: 8) {
+                    Button { screen = "iceCrystalDash" } label: {
+                        Text("Ice Dash").mainButton(color: .cyan)
+                    }
+                    Button { screen = "missionTimerOnly" } label: {
+                        Text("Timer").mainButton(color: .green)
+                    }
+                }
+                .padding(.horizontal, 22)
+
+                Button { finishSession() } label: {
+                    Text("Finish Session").mainButton(color: .green)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 28)
+            }
+
+            if showHowToPlay {
+                HowToPlayPopup(title: "How to Play", message: "Alien penguins are lost on the ice! Tap a penguin to help it waddle home to the glowing colony. Your mission timer keeps running even if you switch activities.", buttonText: "Start Rescue", closeAction: { showHowToPlay = false })
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            timerRunning = true
+            spawnPenguins()
+        }
+    }
+
+    func spawnPenguins() {
+        while penguins.count < 4 {
+            penguins.append(
+                AlienPenguin(
+                    id: nextID,
+                    x: CGFloat.random(in: 40...350),
+                    y: CGFloat.random(in: 160...620)
+                )
+            )
+            nextID += 1
+        }
+    }
+
+    func sendHome(_ penguin: AlienPenguin) {
+        guard let index = penguins.firstIndex(where: { $0.id == penguin.id }), !penguins[index].traveling else { return }
+        penguins[index].traveling = true
+        penguins[index].x = colonyPoint.x
+        penguins[index].y = colonyPoint.y
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            penguins.removeAll { $0.id == penguin.id }
+            rescued += 1
+            spawnPenguins()
+        }
+    }
+
+    func finishSession() {
+        timerRunning = false
+        screen = "missionComplete"
+    }
+
+    func formatTime(_ seconds: Int) -> String {
+        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
 struct MissionTimerOnlyScreen: View {
     @Binding var screen: String
     @Binding var currentSession: Int
@@ -2578,7 +2857,13 @@ struct MissionTimerOnlyScreen: View {
 
     var body: some View {
         ZStack {
-            currentPlanetIndex == 1 ? AnyView(OceanusPrimeScene()) : AnyView(CrystalLagoonScene())
+            if currentPlanetIndex == 1 {
+                OceanusPrimeScene()
+            } else if currentPlanetIndex == 2 {
+                FrostNovaScene()
+            } else {
+                CrystalLagoonScene()
+            }
 
             VStack {
                 HStack {
@@ -2626,6 +2911,13 @@ struct MissionTimerOnlyScreen: View {
                         }
                         Button { screen = "reefBuilder" } label: {
                             Text("Reef").mainButton(color: .purple)
+                        }
+                    } else if currentPlanetIndex == 2 {
+                        Button { screen = "iceCrystalDash" } label: {
+                            Text("Ice Dash").mainButton(color: .cyan)
+                        }
+                        Button { screen = "penguinRescue" } label: {
+                            Text("Penguins").mainButton(color: .blue)
                         }
                     } else {
                         Button { screen = "alienFishing" } label: {
@@ -2761,6 +3053,53 @@ struct SecondLandingCongratsScreen: View {
 }
 
 
+struct ThirdLandingCongratsScreen: View {
+    @Binding var screen: String
+
+    @State private var burst = false
+
+    var body: some View {
+        ZStack {
+            FrostNovaScene()
+                .ignoresSafeArea()
+
+            FireworksView(burst: burst)
+
+            VStack(spacing: 18) {
+                Spacer()
+
+                Text("🎉 Congrats! 🎉")
+                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: .yellow.opacity(0.9), radius: 12)
+                    .multilineTextAlignment(.center)
+
+                Text("You have completed your third landing alignment.")
+                    .font(.title2.bold())
+                    .foregroundColor(.yellow)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+                    .shadow(radius: 8)
+
+                Button {
+                    screen = "missionChoice"
+                } label: {
+                    Text("Continue Mission").mainButton(color: .green)
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 12)
+
+                Spacer()
+            }
+            .padding(.top, 75)
+        }
+        .onAppear {
+            burst = true
+        }
+    }
+}
+
+
 // MARK: - Mission Complete Celebration
 
 struct MissionCompleteScreen: View {
@@ -2772,7 +3111,13 @@ struct MissionCompleteScreen: View {
 
     var body: some View {
         ZStack {
-            currentPlanetIndex == 1 ? AnyView(OceanusPrimeScene()) : AnyView(CrystalLagoonScene())
+            if currentPlanetIndex == 1 {
+                OceanusPrimeScene()
+            } else if currentPlanetIndex == 2 {
+                FrostNovaScene()
+            } else {
+                CrystalLagoonScene()
+            }
 
             ConfettiView(animate: animate)
             FireworksView(burst: burst)
@@ -3546,26 +3891,86 @@ struct RuinPillar: Shape {
     }
 }
 
-struct NebulaRidgeScene: View {
+struct FrostNovaScene: View {
+    @State private var aurora = false
+    @State private var sparkle = false
+
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [.black, .purple, .blue, .black],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [
+                    Color(red: 0.02, green: 0.04, blue: 0.14),
+                    Color(red: 0.05, green: 0.14, blue: 0.30),
+                    Color(red: 0.10, green: 0.30, blue: 0.42),
+                    Color(red: 0.55, green: 0.78, blue: 0.92)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
 
-            ForEach(0..<80, id: \.self) { _ in
-                Circle()
-                    .fill(.white.opacity(Double.random(in: 0.3...0.9)))
-                    .frame(width: CGFloat.random(in: 1...4))
-                    .position(x: CGFloat.random(in: 0...390), y: CGFloat.random(in: 0...800))
+            // Aurora ribbons in the sky
+            ForEach(0..<3, id: \.self) { i in
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [[Color.green, .cyan][i % 2].opacity(0.0), [Color.green, .cyan, .purple][i % 3].opacity(0.45), Color.white.opacity(0.0)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 420, height: CGFloat(30 + i * 18))
+                    .rotationEffect(.degrees(-12 + Double(i) * 6))
+                    .blur(radius: 10)
+                    .offset(x: aurora ? 30 : -30, y: CGFloat(70 + i * 55))
+                    .animation(.easeInOut(duration: Double(4 + i)).repeatForever(autoreverses: true), value: aurora)
             }
 
-            Text("Nebula Ridge")
-                .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .position(x: 195, y: 95)
+            // Twinkling stars/snow
+            ForEach(0..<60, id: \.self) { i in
+                Circle()
+                    .fill(.white.opacity(sparkle ? Double.random(in: 0.4...1.0) : Double.random(in: 0.2...0.6)))
+                    .frame(width: CGFloat(1 + i % 3), height: CGFloat(1 + i % 3))
+                    .position(x: CGFloat((i * 53) % 390), y: CGFloat((i * 71) % 360))
+                    .animation(.easeInOut(duration: Double(1.0 + Double(i % 5) * 0.3)).repeatForever(autoreverses: true), value: sparkle)
+            }
+
+            // Distant crystal glacier peaks
+            ForEach(0..<5, id: \.self) { i in
+                Triangle()
+                    .fill(Color(red: 0.65, green: 0.85, blue: 0.95).opacity(0.55))
+                    .frame(width: CGFloat(120 + i * 18), height: CGFloat(160 + (i % 3) * 40))
+                    .position(x: CGFloat(20 + i * 90), y: CGFloat(660 - (i % 2) * 30))
+            }
+
+            // Foreground crystal glacier formations
+            ForEach(0..<6, id: \.self) { i in
+                Triangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.95), Color.cyan.opacity(0.65), Color.blue.opacity(0.55)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: CGFloat(70 + (i % 3) * 30), height: CGFloat(220 + (i % 2) * 60))
+                    .shadow(color: .cyan.opacity(0.6), radius: 12)
+                    .position(x: CGFloat(10 + i * 70), y: CGFloat(740 - (i % 2) * 20))
+            }
+
+            // Frozen cave entrance
+            Ellipse()
+                .fill(Color(red: 0.02, green: 0.10, blue: 0.18).opacity(0.85))
+                .frame(width: 150, height: 200)
+                .overlay(
+                    Ellipse()
+                        .stroke(Color.cyan.opacity(0.7), lineWidth: 4)
+                        .blur(radius: 1)
+                )
+                .position(x: 320, y: 700)
+        }
+        .onAppear {
+            aurora = true
+            sparkle = true
         }
     }
 }
