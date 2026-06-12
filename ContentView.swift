@@ -47,6 +47,7 @@ func targetAngle(for session: Int, plan: TreatmentPlan) -> Int {
 
 struct ContentView: View {
     @State private var screen = "welcome"
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
     @State private var role = ""
     @State private var username = ""
     @State private var password = ""
@@ -121,7 +122,7 @@ struct ContentView: View {
             case "thirdLandingCongrats":
                 ThirdLandingCongratsScreen(screen: $screen)
             case "missionComplete":
-                MissionCompleteScreen(screen: $screen, currentPlanetIndex: $currentPlanetIndex)
+                MissionCompleteScreen(screen: $screen, currentPlanetIndex: $currentPlanetIndex, currentSession: $currentSession)
             case "planetTransit":
                 PlanetTransitScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, avatar: avatar)
             default:
@@ -276,7 +277,7 @@ struct LoginScreen: View {
                     loginError = ""
                     username = ""
                     password = ""
-                    screen = "avatarCreator"
+                    screen = hasOnboarded ? "patientDashboard" : "avatarCreator"
                 } else if role == "parent" && cleanUsername == savedParentUser && cleanPassword == parentSavedPassword {
                     loginError = ""
                     username = ""
@@ -613,7 +614,10 @@ struct RocketCreatorScreen: View {
             CompactColorSelector(title: "Fins", colors: finOptions, selected: $avatar.rocketFinColor)
             CompactColorSelector(title: "Window", colors: windowOptions, selected: $avatar.rocketWindowColor)
 
-            Button { screen = "patientDashboard" } label: {
+            Button {
+                hasOnboarded = true
+                screen = "patientDashboard"
+            } label: {
                 Text("Save Mission Gear").mainButton(color: .cyan)
             }
 
@@ -2349,7 +2353,7 @@ struct FlappyMantaGameScreen: View {
     }
 
     var currentGapHeight: CGFloat {
-        max(baseGapHeight - CGFloat(level - 1) * 14, 130)
+        max(baseGapHeight - CGFloat(level - 1) * 10, 170)
     }
 
     var body: some View {
@@ -2504,8 +2508,8 @@ struct FlappyMantaGameScreen: View {
                 score += 1
             }
 
-            let withinX = abs(pillars[index].x - birdX) < (pillarWidth / 2 + 22)
-            let withinGap = abs(birdY - pillars[index].gapY) < (pillars[index].gapHeight / 2 - 10)
+            let withinX = abs(pillars[index].x - birdX) < (pillarWidth / 2 + 14)
+            let withinGap = abs(birdY - pillars[index].gapY) < (pillars[index].gapHeight / 2 - 16)
             if withinX && !withinGap {
                 isPlaying = false
             }
@@ -3105,6 +3109,7 @@ struct ThirdLandingCongratsScreen: View {
 struct MissionCompleteScreen: View {
     @Binding var screen: String
     @Binding var currentPlanetIndex: Int
+    @Binding var currentSession: Int
 
     @State private var animate = false
     @State private var burst = false
@@ -3146,7 +3151,9 @@ struct MissionCompleteScreen: View {
 
                 Button {
                     if currentPlanetIndex < 2 {
-                        screen = "planetTransit"
+                        currentPlanetIndex = min(currentPlanetIndex + 1, 2)
+                        currentSession = min(currentSession + 1, 3)
+                        screen = "planetArrival"
                     } else {
                         screen = "patientDashboard"
                     }
@@ -3959,7 +3966,13 @@ struct FrostNovaScene: View {
 
             // Frozen cave entrance
             Ellipse()
-                .fill(Color(red: 0.02, green: 0.10, blue: 0.18).opacity(0.85))
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.10, green: 0.28, blue: 0.40), Color(red: 0.04, green: 0.12, blue: 0.22)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .frame(width: 150, height: 200)
                 .overlay(
                     Ellipse()
