@@ -220,6 +220,7 @@ struct WelcomeScreen: View {
 struct LoginScreen: View {
     @Binding var screen: String
     let role: String
+    @AppStorage("hasOnboarded") private var hasOnboarded = false
     @Binding var username: String
     @Binding var password: String
     @Binding var loginError: String
