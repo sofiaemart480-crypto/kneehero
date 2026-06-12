@@ -1581,7 +1581,7 @@ struct PlanetTransitScreen: View {
             .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: rocketMove)
 
             VStack {
-                Text(phase < 2 ? "Leaving \(planetName(currentPlanetIndex))" : phase < 4 ? "" : "Arriving at \(planetName(nextPlanetIndex))")
+                Text(phase < 2 ? "Leaving \(planetName(currentPlanetIndex))" : "")
                     .font(.system(size: 28, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.top, 80)
@@ -1589,7 +1589,7 @@ struct PlanetTransitScreen: View {
 
                 Spacer()
 
-                Text(phase < 2 ? "Launching from \(planetName(currentPlanetIndex))" : phase < 4 ? "" : "Get ready to take the controls for landing")
+                Text(phase < 2 ? "Launching from \(planetName(currentPlanetIndex))" : "")
                     .font(.headline)
                     .foregroundColor(.cyan)
                     .padding(.bottom, 35)
@@ -1603,8 +1603,8 @@ struct PlanetTransitScreen: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { phase = 1 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) { phase = 2 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.4) { phase = 3 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 7.2) { phase = 4 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 9.4) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 7.2) {
+                phase = 4
                 currentPlanetIndex = nextPlanetIndex
                 currentSession = min(currentSession + 1, 3)
                 screen = "planetArrival"
@@ -2523,9 +2523,9 @@ struct FlappyMantaGameScreen: View {
             velocity = 0
         }
 
-        if birdY > 740 {
-            isPlaying = false
-            return
+        if birdY > 760 {
+            birdY = 760
+            velocity = 0
         }
 
         for index in pillars.indices {
