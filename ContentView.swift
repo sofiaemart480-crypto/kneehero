@@ -109,6 +109,8 @@ struct ContentView: View {
                 FlappyMantaGameScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "reefBuilder":
                 ReefBuilderScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
+            case "currentRider":
+                CurrentRiderScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "iceCrystalDash":
                 IceCrystalDashScreen(screen: $screen, currentSession: $currentSession, currentPlanetIndex: $currentPlanetIndex, missionTimeRemaining: $missionTimeRemaining, timerRunning: $timerRunning)
             case "penguinRescue":
@@ -1676,6 +1678,17 @@ struct MissionChoiceScreen: View {
                         Button { screen = "reefBuilder" } label: {
                             Text("Reef Builder").mainButton(color: .purple)
                         }
+
+                        GamePreviewCard(
+                            title: "Current Rider",
+                            subtitle: "Dodge rocks, sharks, and lasers while collecting oxygen and energy shards.",
+                            emoji: "🌊",
+                            color: .cyan
+                        )
+
+                        Button { screen = "currentRider" } label: {
+                            Text("Current Rider").mainButton(color: .cyan)
+                        }
                     } else if currentPlanetIndex == 2 {
                         GamePreviewCard(
                             title: "Ice Crystal Dash",
@@ -2547,6 +2560,224 @@ struct FlappyMantaGameScreen: View {
             pillars.removeFirst()
             let lastX = pillars.last?.x ?? 420
             pillars.append(FlappyPillar(id: nextPillar(), x: lastX + 240, gapY: CGFloat.random(in: 200...580), gapHeight: currentGapHeight))
+        }
+    }
+
+    func finishSession() {
+        timerRunning = false
+        screen = "missionComplete"
+    }
+
+    func formatTime(_ seconds: Int) -> String {
+        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
+// MARK: - Current Rider
+
+enum RiderItemType {
+    case rock, shark, sub, laser, tentacle, oxygen, energy, key
+
+    var emoji: String {
+        switch self {
+        case .rock: return "🪨"
+        case .shark: return "🦈"
+        case .sub: return "🚢"
+        case .laser: return "⚡"
+        case .tentacle: return "🐙"
+        case .oxygen: return "🫧"
+        case .energy: return "💠"
+        case .key: return "🗝️"
+        }
+    }
+
+    var isObstacle: Bool {
+        switch self {
+        case .rock, .shark, .sub, .laser, .tentacle: return true
+        default: return false
+        }
+    }
+}
+
+struct RiderItem: Identifiable {
+    let id: Int
+    var lane: Int
+    var y: CGFloat
+    var type: RiderItemType
+}
+
+struct RiderParticle: Identifiable {
+    let id: Int
+    var x: CGFloat
+    var y: CGFloat
+    var size: CGFloat
+}
+
+struct CurrentRiderScreen: View {
+    @Binding var screen: String
+    @Binding var currentSession: Int
+    @Binding var currentPlanetIndex: Int
+    @Binding var missionTimeRemaining: Int
+    @Binding var timerRunning: Bool
+
+    @State private var showHowToPlay = true
+    @State private var lane = 1
+    @State private var items: [RiderItem] = []
+    @State private var particles: [RiderParticle] = []
+    @State private var nextID = 0
+    @State private var score = 0
+    @State private var isPlaying = false
+    @State private var crashed = false
+    @State private var boost = false
+
+    let laneX: [CGFloat] = [80, 195, 310]
+    let playerY: CGFloat = 620
+    let baseSpeed: CGFloat = 5
+
+    var speed: CGFloat {
+        (baseSpeed + CGFloat(score / 8)) * (boost ? 1.7 : 1.0)
+    }
+
+    var body: some View {
+        ZStack {
+            OceanusPrimeScene()
+
+            ForEach(particles) { particle in
+                Circle()
+                    .fill(.cyan.opacity(0.5))
+                    .frame(width: particle.size, height: particle.size)
+                    .position(x: particle.x, y: particle.y)
+            }
+
+            ForEach(items) { item in
+                Text(item.type.emoji)
+                    .font(.system(size: item.type.isObstacle ? 42 : 34))
+                    .shadow(color: item.type.isObstacle ? .red.opacity(0.6) : .cyan.opacity(0.8), radius: 8)
+                    .position(x: laneX[item.lane], y: item.y)
+            }
+
+            // Neon trail
+            ForEach(0..<4, id: \.self) { i in
+                Capsule()
+                    .fill(.cyan.opacity(0.25 - Double(i) * 0.05))
+                    .frame(width: 26, height: 18)
+                    .position(x: laneX[lane], y: playerY + 30 + CGFloat(i * 16))
+            }
+
+            Text("🧑‍🚀")
+                .font(.system(size: 46))
+                .shadow(color: .cyan.opacity(0.9), radius: 10)
+                .position(x: laneX[lane], y: playerY)
+                .animation(.easeOut(duration: 0.15), value: lane)
+
+            GameTopBar(title: "Current Rider", count: "Score: \(score)", time: formatTime(missionTimeRemaining), backAction: { screen = "missionChoice" })
+
+            VStack {
+                Spacer()
+
+                if !isPlaying {
+                    Button { startGame() } label: {
+                        Text(crashed ? "Try Again" : "Start Riding").mainButton(color: .cyan)
+                    }
+                } else {
+                    Text("Tap left or right to steer")
+                        .font(.headline)
+                        .foregroundColor(.cyan)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(.black.opacity(0.45))
+                        .cornerRadius(15)
+                }
+
+                HStack(spacing: 8) {
+                    Button { screen = "treasureHunt" } label: { Text("Flappy").mainButton(color: .blue) }
+                    Button { screen = "missionTimerOnly" } label: { Text("Timer").mainButton(color: .green) }
+                }
+                .padding(.horizontal, 22)
+
+                Button { finishSession() } label: {
+                    Text("Finish Session").mainButton(color: .green)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 28)
+            }
+
+            if showHowToPlay {
+                HowToPlayPopup(title: "How to Play", message: "Ride the current through the reef tunnels. Tap the left or right side of the screen to steer between lanes. Avoid rocks, sharks, submarines, lasers, and tentacles. Collect oxygen cells, energy shards, and ancient keys for points. Your mission timer keeps running even if you switch activities.", buttonText: "Start Riding", closeAction: { showHowToPlay = false })
+            }
+        }
+        .ignoresSafeArea()
+        .contentShape(Rectangle())
+        .onTapGesture { location in
+            guard isPlaying else { return }
+            if location.x < UIScreen.main.bounds.width / 2 {
+                lane = max(lane - 1, 0)
+            } else {
+                lane = min(lane + 1, 2)
+            }
+        }
+        .onAppear {
+            timerRunning = true
+        }
+        .onReceive(Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()) { _ in
+            if isPlaying { tick() }
+        }
+    }
+
+    func startGame() {
+        items = []
+        particles = []
+        score = 0
+        lane = 1
+        crashed = false
+        boost = false
+        isPlaying = true
+    }
+
+    func tick() {
+        for index in particles.indices {
+            particles[index].y += speed
+        }
+        particles.removeAll { $0.y > 800 }
+        if Int.random(in: 0...2) == 0 {
+            particles.append(RiderParticle(id: nextID, x: CGFloat.random(in: 30...360), y: -10, size: CGFloat.random(in: 3...7)))
+            nextID += 1
+        }
+
+        for index in items.indices {
+            items[index].y += speed
+        }
+
+        for item in items where item.y > playerY - 20 && item.y < playerY + 20 && item.lane == lane {
+            if item.type.isObstacle {
+                crash()
+                return
+            } else {
+                score += item.type == .energy ? 3 : 1
+                if item.type == .energy {
+                    boost = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { boost = false }
+                }
+                items.removeAll { $0.id == item.id }
+            }
+        }
+
+        items.removeAll { $0.y > 800 }
+
+        if items.allSatisfy({ $0.y > 0 }) && (items.last?.y ?? 300) > 220 {
+            let allTypes: [RiderItemType] = [.rock, .shark, .sub, .laser, .tentacle, .oxygen, .energy, .key]
+            items.append(RiderItem(id: nextID, lane: Int.random(in: 0...2), y: -40, type: allTypes.randomElement()!))
+            nextID += 1
+        }
+    }
+
+    func crash() {
+        isPlaying = false
+        crashed = true
+        let burstX = laneX[lane]
+        for _ in 0..<14 {
+            particles.append(RiderParticle(id: nextID, x: burstX + CGFloat.random(in: -30...30), y: playerY + CGFloat.random(in: -30...30), size: CGFloat.random(in: 6...14)))
+            nextID += 1
         }
     }
 
